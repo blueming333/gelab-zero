@@ -21,10 +21,12 @@ from copilot_front_end.mobile_action_helper import (
 from visualization.log_formatter import meta2messages
 
 from .schemas import (
+    DeviceInfo,
     HistoryDetail,
     HistoryItem,
     TaskRequest,
     TaskResponse,
+    TaskStatusResponse,
     TaskStatus,
 )
 
@@ -59,6 +61,48 @@ class TaskRunner:
         self.log_dir = server_config["log_dir"]
         self.contexts: Dict[str, TaskContext] = {}
         self.loop: Optional[asyncio.AbstractEventLoop] = None
+        self.selected_device_id: Optional[str] = None
+
+    async def list_connected_devices(self) -> List[DeviceInfo]:
+        devices = list_devices() or []
+        infos: List[DeviceInfo] = []
+        for device_id in devices:
+            try:
+                wm = get_device_wm_size(device_id)
+                infos.append(DeviceInfo(device_id=device_id, device_wm_size=list(wm)))
+            except Exception:
+                infos.append(DeviceInfo(device_id=device_id, device_wm_size=None))
+        return infos
+
+    async def get_current_device(self) -> DeviceInfo:
+        devices = list_devices() or []
+        if not devices:
+            raise HTTPException(status_code=404, detail="no connected devices")
+
+        device_id = self.selected_device_id if self.selected_device_id in devices else devices[0]
+        wm = get_device_wm_size(device_id)
+        return DeviceInfo(device_id=device_id, device_wm_size=list(wm))
+
+    async def select_device(self, device_id: str) -> DeviceInfo:
+        devices = list_devices() or []
+        if device_id not in devices:
+            raise HTTPException(status_code=400, detail=f"device not connected: {device_id}")
+        self.selected_device_id = device_id
+        wm = get_device_wm_size(device_id)
+        return DeviceInfo(device_id=device_id, device_wm_size=list(wm))
+
+    async def get_task_status(self, task_id: str) -> TaskStatusResponse:
+        context = self.contexts.get(task_id)
+        if context is None:
+            raise HTTPException(status_code=404, detail="task not found")
+        return TaskStatusResponse(
+            task_id=context.task_id,
+            session_id=context.session_id,
+            status=context.status,
+            created_at=context.created_at,
+            finished=context.finished,
+            error=context.error,
+        )
 
     async def start_task(self, payload: TaskRequest) -> TaskResponse:
         if self.loop is None:
@@ -225,35 +269,30 @@ class TaskRunner:
                 context.status = TaskStatus.stopped
             else:
                 context.status = TaskStatus.completed
-        except Exception:
+        except Exception as exc:  # noqa: BLE001
             context.status = TaskStatus.failed
-            await context.queue.put(
-                {
-                    "type": "error",
-                    "error": context.error or "task failed",
-                    "message": context.error or "task failed",
-                    "session_id": context.session_id,
-                    "task_id": context.task_id,
-                }
-            )
+            context.error = context.error or str(exc)
+            # 不再下发前端 error 事件，直接抛出让后端日志可见
+            raise
         finally:
             context.finished = True
             if context.log_watcher is not None:
                 await context.log_watcher
-            await context.queue.put(
-                {
-                    "type": "complete",
-                    "session_id": context.session_id,
-                    "task_id": context.task_id,
-                    "status": context.status.value,
-                }
-            )
+            if context.status != TaskStatus.failed:
+                await context.queue.put(
+                    {
+                        "type": "complete",
+                        "session_id": context.session_id,
+                        "task_id": context.task_id,
+                        "status": context.status.value,
+                    }
+                )
 
     def _resolve_device(self, device_id: Optional[str]) -> Dict[str, Any]:
         devices = list_devices()
         if not devices:
             raise RuntimeError("No available devices")
-        target = device_id or devices[0]
+        target = device_id or self.selected_device_id or devices[0]
         device_wm_size = get_device_wm_size(target)
         return {
             "device_id": target,
@@ -279,6 +318,12 @@ class TaskRunner:
             "model_provider": model_entry.get("model_provider", target_model_name),
             "args": deepcopy(model_entry.get("args") or base_model_config.get("args") or {}),
         }
+        args = model_config.get("args") or {}
+        args.setdefault("max_tokens", 512)
+        args.setdefault("temperature", 0.5)
+        args.setdefault("top_p", 1.0)
+        args.setdefault("frequency_penalty", 0.0)
+        model_config["args"] = args
         if "image_preprocess" in model_entry:
             model_config["image_preprocess"] = model_entry["image_preprocess"]
 

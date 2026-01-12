@@ -2,32 +2,54 @@
   min-height: 100vh;
 }
 
-.app {
+.layout-root {
   min-height: 100vh;
-  padding: 24px;
+  height: 100vh;
   background: radial-gradient(circle at 20% 20%, rgba(0, 91, 255, 0.05), transparent 25%),
     radial-gradient(circle at 80% 0%, rgba(56, 189, 248, 0.08), transparent 25%),
     #f5f6fa;
 }
 
-.page-header {
+.app-header {
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  padding: 16px 24px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
-.page-title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: #0f172a;
+.app-content {
+  padding: 24px;
+  height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
 }
 
-.layout-grid {
+.app {
+  height: 100%;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.history-page {
+  min-height: calc(100vh - 140px);
+}
+
+.history-grid {
   display: grid;
-  grid-template-columns: 360px 1fr;
+  grid-template-columns: 380px 1fr;
   gap: 16px;
+  height: calc(100vh - 180px);
+}
+
+.history-list-scroll {
+  max-height: calc(100vh - 220px);
+  overflow: auto;
 }
 
 .card {
@@ -38,10 +60,101 @@
 }
 
 .timeline-container {
-  max-height: calc(100vh - 200px);
-  overflow: auto;
-  padding: 16px;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  width: 100%;
+  /* 交给外层 ScrollArea 负责滚动；这里不要固定高度/overflow，避免内容高度被压成“刚好一屏” */
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.timeline-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeline-item-row {
+  display: grid;
+  grid-template-columns: clamp(200px, 26vw, 320px) 1fr;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.timeline-item-row.no-image {
+  grid-template-columns: 1fr;
+}
+
+.timeline-image {
+  width: 100%;
+  min-width: 180px;
+  max-width: 340px;
+  aspect-ratio: 3 / 4;
+  max-height: clamp(240px, 50vh, 520px);
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timeline-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.timeline-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.timeline-text .message-md {
+  word-break: break-word;
+  line-height: 1.6;
+}
+
+@media (max-width: 1200px) {
+  .timeline-item-row {
+    grid-template-columns: minmax(180px, 220px) 1fr;
+    gap: 12px;
+  }
+  .timeline-image {
+    max-width: 260px;
+    min-height: 200px;
+    aspect-ratio: 4 / 5;
+  }
+}
+
+@media (max-width: 900px) {
+  .timeline-item-row {
+    grid-template-columns: 1fr;
+  }
+  .timeline-image {
+    max-width: 100%;
+    justify-self: start;
+  }
+}
+
+@media (max-width: 640px) {
+  .timeline-container {
+    padding: 10px 12px;
+  }
+  .timeline-item-row {
+    gap: 10px;
+  }
 }
 
 .message-card {

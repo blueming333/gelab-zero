@@ -6,3 +6,5 @@ running_log
 gelab-zero-4b-preview/
 
 model_config.yaml
+.venv
+__pycache__/

@@ -34,6 +34,10 @@ export async function fetchHistoryDetail(sessionId: string): Promise<HistoryDeta
   return data
 }
 
+export async function deleteHistory(sessionId: string): Promise<void> {
+  await api.delete(`/api/tasks/history/${sessionId}`)
+}
+
 export async function fetchModels(): Promise<ModelInfo[]> {
   const { data } = await api.get('/api/models')
   if (!data) return []

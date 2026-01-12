@@ -1,5 +1,5 @@
 import { Form, Input, InputNumber, Select, Switch, Button, Space, Typography } from 'antd'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { TaskRequest } from '../api/types'
 import type { ModelInfo } from '../api/types'
 
@@ -18,11 +18,23 @@ export function TaskComposer({ models, loading, defaultModelName, onSubmit }: Pr
   const [submitting, setSubmitting] = useState(false)
 
   // 后端期望传递的是模型“key”（name），显示用 model_name
-  const initialModel =
-    defaultModelName ||
-    models.find((m) => m.model_name === defaultModelName)?.name ||
-    models?.[0]?.name ||
-    models?.[0]?.model_name
+  const initialModel = useMemo(() => {
+    const matched = models.find(
+      (m) => m.name === defaultModelName || m.model_name === defaultModelName,
+    )
+    return (
+      matched?.name ||
+      defaultModelName ||
+      models?.[0]?.name ||
+      models?.[0]?.model_name
+    )
+  }, [models, defaultModelName])
+
+  useEffect(() => {
+    if (initialModel) {
+      form.setFieldsValue({ model_name: initialModel })
+    }
+  }, [initialModel, form])
 
   const handleFinish = async (values: TaskRequest) => {
     setSubmitting(true)

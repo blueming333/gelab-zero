@@ -2,12 +2,19 @@ import asyncio
 import json
 import os
 from typing import Dict, Any
+from copy import deepcopy
 
 import yaml
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 
-from .schemas import TaskRequest, TaskResponse
+from .schemas import (
+    DeviceInfo,
+    DeviceSelectRequest,
+    TaskRequest,
+    TaskResponse,
+    TaskStatusResponse,
+)
 from .task_runner import TaskRunner
 
 
@@ -31,12 +38,17 @@ def load_model_registry(config_path: str) -> Dict[str, Dict[str, Any]]:
 
 def build_rollout_config(default_model: str, model_registry: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
     base_model_cfg = model_registry.get(default_model, {})
+    args = deepcopy(base_model_cfg.get("args") or {})
+    args.setdefault("max_tokens", 512)
+    args.setdefault("temperature", 0.5)
+    args.setdefault("top_p", 1.0)
+    args.setdefault("frequency_penalty", 0.0)
     return {
         "task_type": "parser_0922_summary",
         "model_config": {
             "model_name": base_model_cfg.get("model_name", default_model),
             "model_provider": base_model_cfg.get("model_provider", default_model),
-            "args": base_model_cfg.get("args") or {},
+            "args": args,
         },
         "max_steps": 200,
         "delay_after_capture": 1.5,
@@ -78,9 +90,29 @@ async def list_models():
     return [{"name": name, **cfg} for name, cfg in model_registry.items()]
 
 
+@app.get("/api/devices", response_model=list[DeviceInfo])
+async def list_devices_api():
+    return await task_runner.list_connected_devices()
+
+
+@app.get("/api/devices/current", response_model=DeviceInfo)
+async def current_device_api():
+    return await task_runner.get_current_device()
+
+
+@app.post("/api/devices/select", response_model=DeviceInfo)
+async def select_device_api(payload: DeviceSelectRequest):
+    return await task_runner.select_device(payload.device_id)
+
+
 @app.post("/api/tasks", response_model=TaskResponse)
 async def create_task(payload: TaskRequest):
     return await task_runner.start_task(payload)
+
+
+@app.get("/api/tasks/{task_id}", response_model=TaskStatusResponse)
+async def task_status(task_id: str):
+    return await task_runner.get_task_status(task_id)
 
 
 @app.post("/api/tasks/{task_id}/stop")
@@ -96,6 +128,11 @@ async def history(limit: int = 20):
 @app.get("/api/tasks/history/{session_id}")
 async def history_detail(session_id: str):
     return await task_runner.get_history_detail(session_id)
+
+
+@app.delete("/api/tasks/history/{session_id}")
+async def delete_history(session_id: str):
+    return await task_runner.delete_history(session_id)
 
 
 @app.get("/api/tasks/{task_id}/events")

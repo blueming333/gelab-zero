@@ -1,3 +1,19 @@
 local:
+    api_base: "https://u66892-9528-a7298c78.westx.seetacloud.com:8443/v1"
+    api_key: "EMPTY"
+    model_name: "gelab-zero-4b-preview"
+local_dev:
     api_base: "http://localhost:11434/v1"
     api_key: "EMPTY"
+local_qwen3-vl:4b:
+    api_base: "http://192.168.31.50:11434/v1"
+    api_key: "EMPTY"
+    model_name: "qwen3-vl:4b"
+qwen3-vl-flash:
+    api_base: "https://open-api.mincode.cn/v1"
+    api_key: "sk-ERB5MumK4HjBo2AJaey8gikkvwm9CTVvoDcHF9X7RnoFVLmf"
+    model_name: "qwen3-vl-flash"
+fara-7b:
+    api_base: "https://u66892-a8f3-65f5c37b.westd.seetacloud.com:8443/v1"
+    api_key: "EMPTY"
+    model_name: "fara-7b"

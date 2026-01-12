@@ -28,6 +28,15 @@ class TaskResponse(BaseModel):
     status: Optional[Union[str, TaskStatus]] = None
 
 
+class TaskStatusResponse(BaseModel):
+    task_id: str
+    session_id: Optional[str] = None
+    status: Union[str, TaskStatus]
+    created_at: Optional[float] = None
+    finished: Optional[bool] = None
+    error: Optional[str] = None
+
+
 class HistoryItem(BaseModel):
     session_id: str
     task: str
@@ -39,4 +48,13 @@ class HistoryItem(BaseModel):
 class HistoryDetail(BaseModel):
     session_id: str
     messages: List[Dict[str, Any]]
+
+
+class DeviceInfo(BaseModel):
+    device_id: str
+    device_wm_size: Optional[List[int]] = None
+
+
+class DeviceSelectRequest(BaseModel):
+    device_id: str
 
